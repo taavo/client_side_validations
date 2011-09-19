@@ -32,6 +32,7 @@
         // Set up the events for each validatable form element
         .find('[data-validate]:input:not(:radio)')
           .live('focusout',                function ()          { $(this).isValid(settings.validators); })
+          .live('keyup',                   function ()          { $(this).data('changed', true).isValid(settings.validators); })
           .live('change',                  function ()          { $(this).data('changed', true); })
           // Callbacks
           .live('element:validate:after',  function (eventData) { clientSideValidations.callbacks.element.after( $(this), eventData); })
@@ -64,7 +65,7 @@
               });
           }
         });
-
+      form.isValid(settings.validators);
     });
   };
 
