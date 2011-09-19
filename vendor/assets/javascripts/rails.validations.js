@@ -33,14 +33,17 @@
         .find('[data-validate]:input:not(:radio)')
           .live('focusout',                function ()          { $(this).isValid(settings.validators); })
           .live('keyup',                   function ()          { $(this).data('changed', true).isValid(settings.validators); })
+          .live('focus',                   function ()          { $(this).data('changed', true); })
           .live('change',                  function ()          { $(this).data('changed', true); })
           // Callbacks
           .live('element:validate:after',  function (eventData) { clientSideValidations.callbacks.element.after( $(this), eventData); })
           .live('element:validate:before', function (eventData) { clientSideValidations.callbacks.element.before($(this), eventData); })
-          .live('element:validate:fail',   function (eventData, message) {
+          .live('element:validate:fail',   function (eventData, message, show_errors) {
             var element = $(this);
             clientSideValidations.callbacks.element.fail(element, message, function () {
-              addError(element, message);
+              if(show_errors) {
+                addError(element, message);
+              }
             }, eventData); })
           .live('element:validate:pass',   function (eventData) {
             var element = $(this);
@@ -69,11 +72,15 @@
     });
   };
 
-  $.fn.isValid = function (validators) {
+  $.fn.isValid = function(validators, show_errors) {
+    if(show_errors === undefined){
+      show_errors = true;
+    }
+
     if ($(this[0]).is('form')) {
       return validateForm($(this[0]), validators);
     } else {
-      return validateElement($(this[0]), validators[this[0].name]);
+      return validateElement($(this[0]), validators[this[0].name], show_errors);
     }
   };
 
@@ -81,7 +88,7 @@
     var valid = true;
 
     form.trigger('form:validate:before').find('[data-validate]:input').each(function() {
-      if (!$(this).isValid(validators)) { valid = false; }
+      if (!$(this).isValid(validators, false)) { valid = false; }
     });
 
     if (valid) {
@@ -93,7 +100,7 @@
     form.trigger('form:validate:after');
     return valid;
   },
-    validateElement = function (element, validators) {
+    validateElement = function (element, validators, show_errors) {
       element.trigger('element:validate:before');
 
       if (element.data('changed') !== false) {
@@ -104,7 +111,7 @@
         // the clientSideValidations.validators.all() object
         for (kind in clientSideValidations.validators.all()) {
           if (validators[kind] && (message = clientSideValidations.validators.all()[kind](element, validators[kind]))) {
-            element.trigger('element:validate:fail', message).data('valid', false);
+            element.trigger('element:validate:fail', [message, show_errors]).data('valid', false);
             valid = false;
             break;
           }
@@ -363,7 +370,7 @@ var clientSideValidations = {
     },
     'Formtastic::FormBuilder': {
       add: function (element, settings, message) {
-        if (element.data('valid') !== false) {
+        if (element.data('valid') !== false || element.parent().find('p.' + settings.inline_error_class).length == 0) {
           var wrapper = element.closest('li'),
               errorElement = jQuery('<p class="' + settings.inline_error_class + '">' + message + '</p>');
           wrapper.addClass('error');
